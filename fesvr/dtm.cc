@@ -163,15 +163,16 @@ size_t dtm_t::chunk_align()
 
 void dtm_t::read_chunk(uint64_t taddr, size_t len, void* dst)
 {
-  uint32_t prog[ram_words];
-  uint32_t data[data_words];
+  //uint32_t prog[ram_words];
+  //uint32_t data[data_words];
 
-  uint8_t * curr = (uint8_t*) dst;
-
+  uint32_t * curr = (uint32_t*) dst;
   //halt();
-  write(DMI_SBCS,DMI_SBCS_SBAUTOREAD);
+  write(DMI_SBCS,DMI_SBCS_SBAUTOREAD | DMI_SBCS_SBAUTOINCREMENT);
   write(DMI_SBADDRESS0,taddr);
-  curr[0] = read(DMI_SBDATA0);
+  for (size_t i = 0; i < (len * 8 / xlen); i++){
+    curr[i] = read(DMI_SBDATA0);
+  }  
 //  memcpy(data, read(DMI_SBDATA0), xlen/8);
 /*  uint64_t s0 = save_reg(S0);
   uint64_t s1 = save_reg(S1);
@@ -219,19 +220,24 @@ void dtm_t::read_chunk(uint64_t taddr, size_t len, void* dst)
 
 void dtm_t::write_chunk(uint64_t taddr, size_t len, const void* src)
 {  
-  uint32_t prog[ram_words];
+/*  uint32_t prog[ram_words];*/
   uint32_t data[data_words];
 
   const uint8_t * curr = (const uint8_t*) src;
-
-  halt();
-  memcpy(data, curr, xlen/8);
+  //halt();
+  if (src != 0)
+    memcpy(data, curr, xlen/8);
+  else 
+    data[0] = 0;
   write(DMI_SBCS,DMI_SBCS_SBAUTOINCREMENT);
   write(DMI_SBADDRESS0,taddr-4);
   write(DMI_SBDATA0,data[0]);
   for (size_t i = 1; i < (len * 8 / xlen); i++){
     curr += xlen/8;
-    memcpy(data, curr, xlen/8);
+    if (src != 0)
+      memcpy(data, curr, xlen/8);
+    else
+      data[0] = 0;
     write(DMI_SBDATA0,data[0]);
   }
 /*  uint64_t s0 = save_reg(S0);
@@ -295,7 +301,7 @@ void dtm_t::write_chunk(uint64_t taddr, size_t len, const void* src)
   
   restore_reg(S0, s0);
   restore_reg(S1, s1);*/
-  resume();
+  //resume();
 }
 
 void dtm_t::die(uint32_t cmderr)
@@ -318,7 +324,8 @@ void dtm_t::die(uint32_t cmderr)
 
 void dtm_t::clear_chunk(uint64_t taddr, size_t len)
 {
-  uint32_t prog[ram_words];
+  write_chunk(taddr,len,0);
+/*  uint32_t prog[ram_words];
   uint32_t data[data_words];
   
   halt();
@@ -354,7 +361,7 @@ void dtm_t::clear_chunk(uint64_t taddr, size_t len)
   restore_reg(S0, s0);
   restore_reg(S1, s1);
 
-  resume();
+  resume();*/
 }
 
 uint64_t dtm_t::write_csr(unsigned which, uint64_t data)
@@ -380,7 +387,6 @@ uint64_t dtm_t::read_csr(unsigned which)
 uint64_t dtm_t::modify_csr(unsigned which, uint64_t data, uint32_t type)
 {
   halt();
-  printf("in modify_csr %d\n",which);
   // This code just uses DSCRATCH to save S0
   // and data_base to do the transfer so we don't
   // need to run more commands to save and restore
@@ -415,7 +421,7 @@ uint64_t dtm_t::modify_csr(unsigned which, uint64_t data, uint32_t type)
     res |= read(DMI_DATA1);//((uint64_t) adata[1]) << 32;
   
   resume();
-  //return res;  
+  return res;  
 }
 
 size_t dtm_t::chunk_max_size()
