@@ -230,7 +230,7 @@ void dtm_t::write_chunk(uint64_t taddr, size_t len, const void* src)
   else 
     data[0] = 0;
   write(DMI_SBCS,DMI_SBCS_SBAUTOINCREMENT);
-  write(DMI_SBADDRESS0,taddr-4);
+  write(DMI_SBADDRESS0,taddr);
   write(DMI_SBDATA0,data[0]);
   for (size_t i = 1; i < (len * 8 / xlen); i++){
     curr += xlen/8;
