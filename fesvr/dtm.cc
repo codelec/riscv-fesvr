@@ -163,72 +163,20 @@ size_t dtm_t::chunk_align()
 
 void dtm_t::read_chunk(uint64_t taddr, size_t len, void* dst)
 {
-  //uint32_t prog[ram_words];
-  //uint32_t data[data_words];
-
   uint32_t * curr = (uint32_t*) dst;
-  //halt();
   write(DMI_SBCS,DMI_SBCS_SBAUTOREAD | DMI_SBCS_SBAUTOINCREMENT);
   write(DMI_SBADDRESS0,taddr);
-  for (size_t i = 0; i < (len * 8 / xlen); i++){
+  for (size_t i = 0; i < (len * 8 / xlen); i++)
     curr[i] = read(DMI_SBDATA0);
-  }  
-//  memcpy(data, read(DMI_SBDATA0), xlen/8);
-/*  uint64_t s0 = save_reg(S0);
-  uint64_t s1 = save_reg(S1);
-  
-  prog[0] = LOAD(xlen, S1, S0, 0);
-  prog[1] = ADDI(S0, S0, xlen/8);
-  prog[2] = EBREAK;
-
-  data[0] = (uint32_t) taddr;
-  if (xlen > 32) {
-    data[1] = (uint32_t) (taddr >> 32);
-  }
-
-  // Write s0 with the address, then execute program buffer.
-  // This will get S1 with the data and increment s0.
-  uint32_t command = AC_ACCESS_REGISTER_TRANSFER |
-    AC_ACCESS_REGISTER_WRITE |
-    AC_ACCESS_REGISTER_POSTEXEC |
-    AC_AR_SIZE(xlen) | 
-    AC_AR_REGNO(S0);
-
-  RUN_AC_OR_DIE(command, prog, 3, data, xlen/(4*8));
-
-  // TODO: could use autoexec here.
-  for (size_t i = 0; i < (len * 8 / xlen); i++){
-    command = AC_ACCESS_REGISTER_TRANSFER |
-      AC_AR_SIZE(xlen) |
-      AC_AR_REGNO(S1);
-    if ((i + 1) < (len * 8 / xlen)) {
-      command |= AC_ACCESS_REGISTER_POSTEXEC;
-    }
-    
-    RUN_AC_OR_DIE(command, 0, 0, data, xlen/(4*8));
-
-    memcpy(curr, data, xlen/8);
-    curr += xlen/8;
-  }
-
-  restore_reg(S0, s0);
-  restore_reg(S1, s1);*/
-
-  //resume(); 
-
 }
 
 void dtm_t::write_chunk(uint64_t taddr, size_t len, const void* src)
 {  
-/*  uint32_t prog[ram_words];*/
-  uint32_t data[data_words];
+  uint32_t data[data_words] = {0};
 
   const uint8_t * curr = (const uint8_t*) src;
-  //halt();
   if (src != 0)
     memcpy(data, curr, xlen/8);
-  else 
-    data[0] = 0;
   write(DMI_SBCS,DMI_SBCS_SBAUTOINCREMENT);
   write(DMI_SBADDRESS0,taddr);
   write(DMI_SBDATA0,data[0]);
@@ -236,72 +184,8 @@ void dtm_t::write_chunk(uint64_t taddr, size_t len, const void* src)
     curr += xlen/8;
     if (src != 0)
       memcpy(data, curr, xlen/8);
-    else
-      data[0] = 0;
     write(DMI_SBDATA0,data[0]);
   }
-/*  uint64_t s0 = save_reg(S0);
-  uint64_t s1 = save_reg(S1);
-  
-  prog[0] = STORE(xlen, S1, S0, 0);
-  prog[1] = ADDI(S0, S0, xlen/8);
-  prog[2] = EBREAK;
-  
-  data[0] = (uint32_t) taddr;
-  if (xlen > 32) {
-    data[1] = (uint32_t) (taddr >> 32);
-  }
-
-  // Write the program (not used yet).
-  // Write s0 with the address. 
-  uint32_t command = AC_ACCESS_REGISTER_TRANSFER |
-    AC_ACCESS_REGISTER_WRITE |
-    AC_AR_SIZE(xlen) |
-    AC_AR_REGNO(S0);
-  
-  RUN_AC_OR_DIE(command, prog, 3, data, xlen/(4*8));
-
-  // Use Autoexec for more than one word of transfer.
-  // Write S1 with data, then execution stores S1 to
-  // 0(S0) and increments S0.
-  // Each time we write XLEN bits.
-  memcpy(data, curr, xlen/8);
-  curr += xlen/8;
-  
-  command = AC_ACCESS_REGISTER_TRANSFER |
-    AC_ACCESS_REGISTER_POSTEXEC |
-    AC_ACCESS_REGISTER_WRITE | 
-    AC_AR_SIZE(xlen) |
-    AC_AR_REGNO(S1);
-
-  RUN_AC_OR_DIE(command, 0, 0, data, xlen/(4*8));
-
-  uint32_t abstractcs;
-  for (size_t i = 1; i < (len * 8 / xlen); i++){
-    if (i == 1) {
-      write(DMI_ABSTRACTAUTO, 1 << DMI_ABSTRACTAUTO_AUTOEXECDATA_OFFSET);
-    }
-    memcpy(data, curr, xlen/8);
-    curr += xlen/8;
-    if (xlen == 64) {
-      write(DMI_DATA1, data[1]);
-    }
-    write(DMI_DATA0, data[0]); //Triggers a command w/ autoexec.
-    
-    do {
-      abstractcs = read(DMI_ABSTRACTCS);
-    } while (abstractcs & DMI_ABSTRACTCS_BUSY);
-    if ( get_field(abstractcs, DMI_ABSTRACTCS_CMDERR)) {
-      die(get_field(abstractcs, DMI_ABSTRACTCS_CMDERR));
-    }
-  }
-  if ((len * 8 / xlen) > 1) {
-    write(DMI_ABSTRACTAUTO, 0);
-  }
-  
-  restore_reg(S0, s0);
-  restore_reg(S1, s1);*/
-  //resume();
 }
 
 void dtm_t::die(uint32_t cmderr)
@@ -325,43 +209,6 @@ void dtm_t::die(uint32_t cmderr)
 void dtm_t::clear_chunk(uint64_t taddr, size_t len)
 {
   write_chunk(taddr,len,0);
-/*  uint32_t prog[ram_words];
-  uint32_t data[data_words];
-  
-  halt();
-  uint64_t s0 = save_reg(S0);
-  uint64_t s1 = save_reg(S1);
-
-  uint32_t command;
-
-  // S0 = Addr
-  data[0] = (uint32_t) taddr;
-  data[1] = (uint32_t) (taddr >> 32);
-  command = AC_ACCESS_REGISTER_TRANSFER |
-    AC_ACCESS_REGISTER_WRITE |
-    AC_AR_SIZE(xlen) |
-    AC_AR_REGNO(S0);
-  RUN_AC_OR_DIE(command, 0, 0, data, xlen/(4*8));
-
-  // S1 = Addr + len, loop until S0 = S1
-  prog[0] = STORE(xlen, X0, S0, 0);
-  prog[1] = ADDI(S0, S0, xlen/8);
-  prog[2] = BNE(S0, S1, 0*4, 2*4);
-  prog[3] = EBREAK;
-
-  data[0] = (uint32_t) (taddr + len);
-  data[1] = (uint32_t) ((taddr + len) >> 32);
-  command = AC_ACCESS_REGISTER_TRANSFER |
-    AC_ACCESS_REGISTER_WRITE |
-    AC_AR_SIZE(xlen) |
-    AC_AR_REGNO(S1)  |
-    AC_ACCESS_REGISTER_POSTEXEC;
-  RUN_AC_OR_DIE(command, prog, 4, data, xlen/(4*8));
-
-  restore_reg(S0, s0);
-  restore_reg(S1, s1);
-
-  resume();*/
 }
 
 uint64_t dtm_t::write_csr(unsigned which, uint64_t data)
@@ -493,10 +340,7 @@ void host_thread_main(void* arg)
 
 void dtm_t::reset()
 {
-  // Each of these functions already
-  // does a halt and resume.
-  fence_i();
-  write(68,10);
+  write(0x44,10); // pull sodor out of reset NON-STANDARD
   //write_csr(0x7b1, get_entry_point());
 }
 
